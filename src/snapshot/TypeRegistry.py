@@ -10,7 +10,6 @@ class TypeRegistry:
     def register(self, handler: TypeHandler):
         _type = handler.python_type
         _id = handler.type_identifier
-        _is_sequence = []
 
         if not handler.override_previous_entry:
             if _type in self._by_types:

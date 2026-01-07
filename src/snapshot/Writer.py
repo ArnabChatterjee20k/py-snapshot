@@ -19,9 +19,6 @@ class Writer:
     def buffer(self):
         return self._buffer
 
-    def write_encoding(self, marker: int):
-        pass
-
     def write_encoding(self, encoding: EncodingTypes):
         # write with a prefix of 11
         self._buffer.write(bytes([3 << 6 | encoding.value]))
