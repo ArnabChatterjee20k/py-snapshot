@@ -1,12 +1,5 @@
-from ..TypeHandler import TypeHandler
+from .DictHandler import DictHandler
+from .IntHandler import IntHandler
+from .StringHandler import StringHandler
 
-
-class StringHandler(TypeHandler[str]):
-    type_identifier = 1
-    python_type = str
-
-    def serialise(self, writer, value: str) -> None:
-        pass
-
-    def deserialise(self, reader) -> str:
-        pass
+__all__ = ["DictHandler", "IntHandler", "StringHandler"]

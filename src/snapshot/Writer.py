@@ -1,11 +1,16 @@
 from typing import BinaryIO
 import struct
-from .TypeHandler import EncodingTypes, VariableLengthEncodingMarkers, ALL_SET_MARKER
 import zlib
+from .TypeHandler import EncodingTypes, VariableLengthEncodingMarkers, ALL_SET_MARKER
+from .TypeRegistry import TypeNotFoundException
 
 
 class Writer:
     def __init__(self, source: dict = None, buffer: BinaryIO = None):
+        # to avoid partial imports
+        from . import registry
+
+        self._registry = registry
         self._buffer: BinaryIO = buffer
         self._source: dict = source
 
@@ -19,25 +24,49 @@ class Writer:
     def buffer(self):
         return self._buffer
 
+    def write(self):
+        self.write_length(len(self._source))
+        for key, value in self._source.items():
+            self.write_key_value(key, value)
+        self.write_encoding(EncodingTypes.EOF)
+
     def write_encoding(self, encoding: EncodingTypes):
         # write with a prefix of 11
         self._buffer.write(bytes([3 << 6 | encoding.value]))
 
+    def write_key_value(self, key, value) -> int:
+        written = 0
+        # object type
+        handler = self._registry.get_handler_by_type(type(value))
+        if not handler:
+            raise TypeNotFoundException(f"Type handler not found for {type(value)}")
+        object_type = handler.type_identifier
+        written += self.buffer.write(bytes([object_type]))
+
+        # key length
+        written += self.write_value(key)
+
+        # key data
+        written += handler.serialise(self, value)
+        return written
+
     def write_value(self, value) -> int:
         "Write the value to the buffer in compressed string format"
-        value = str(value)
+        value = (str(value)).encode("utf-8")
 
         # try compression and if length coming small then only use the compressed value
-        original_length = len(value.encode("utf-8"))
-        compressed = zlib.compress(value.encode())
+        original_length = len(value)
+        compressed = zlib.compress(value)
         compressed_length = len(compressed)
 
         if compressed_length < original_length:
             self.write_encoding(EncodingTypes.COMPRESSED)
-            return sum(self.write_length(compressed_length), compressed)
+            return sum(
+                self.write_length(compressed_length), self._buffer.write(compressed)
+            )
 
         # no compression marker
-        return sum(self.write_length(original_length), value)
+        return sum([self.write_length(original_length), self._buffer.write(value)])
 
     def write_length(self, length: int) -> int:
         "Returns number of bytes written"

@@ -3,12 +3,12 @@ from ..Writer import Writer
 from ..Reader import Reader
 
 
-class FloatHandler(TypeHandler[float]):
-    type_identifier = 4
-    python_type = float
+class StringHandler(TypeHandler[str]):
+    type_identifier = 3
+    python_type = str
     is_sequence_type = False
 
-    def serialise(self, writer: Writer, value: float) -> int:
+    def serialise(self, writer: Writer, value: str) -> int:
         if not self.can_handle(value):
             raise TypeError("Can handle value")
 

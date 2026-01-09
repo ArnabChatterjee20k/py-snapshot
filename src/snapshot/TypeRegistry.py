@@ -5,7 +5,7 @@ class TypeRegistry:
     def __init__(self):
         self._by_types: dict[type, TypeHandler] = {}
         self._by_ids: dict[int, TypeHandler] = {}
-        self._sequence_types: list[int] = []
+        self._sequence_types: set[int] = set()
 
     def register(self, handler: TypeHandler):
         _type = handler.python_type
@@ -20,4 +20,19 @@ class TypeRegistry:
 
         self._by_types[_type] = handler
         self._by_ids[_id] = handler
-        self._sequence_types.append(_id)
+        if handler.is_sequence_type:
+            self._sequence_types.add(_id)
+
+    def get_handler_by_id(self, id):
+        return self._by_ids.get(id)
+
+    def get_handler_by_type(self, datatype: type):
+        return self._by_types.get(datatype)
+
+    def is_sequence_type(self, id):
+        return id in self._sequence_types
+
+
+class TypeNotFoundException(Exception):
+    def __init__(self, *args):
+        super().__init__(*args)
