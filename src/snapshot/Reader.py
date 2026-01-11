@@ -1,6 +1,11 @@
 from typing import BinaryIO
 import struct
-from .TypeHandler import EncodingTypes, VariableLengthEncodingMarkers, ALL_SET_MARKER
+from .TypeHandler import (
+    TypeHandler,
+    EncodingTypes,
+    VariableLengthEncodingMarkers,
+    ALL_SET_MARKER,
+)
 from .TypeRegistry import TypeNotFoundException
 import zlib
 
@@ -31,14 +36,7 @@ class Reader:
         self.buffer.seek(-1, 1)
         return None
 
-    def read_value(self, encoding: EncodingTypes = None):
-        length = self.read_length()
-        if encoding == EncodingTypes.COMPRESSED:
-            data = self._buffer.read(length)
-            return zlib.decompress(data).decode()
-        return self._buffer.read(length).decode("utf-8")
-
-    def read_key_value(self):
+    def read_object_id(self) -> tuple[TypeHandler, int]:
         # object type
         current = self._buffer.read(1)
         if not current:
@@ -47,7 +45,7 @@ class Reader:
 
         # EOF marker
         if object_type_id == EncodingTypes.EOF.value:
-            return None, None
+            return None, 1
 
         handler = self._registry.get_handler_by_id(object_type_id)
         if not handler:
@@ -55,6 +53,19 @@ class Reader:
                 f"Handler not found for type ID {object_type_id}"
             )
 
+        return handler, 1
+
+    def read_value(self, encoding: EncodingTypes = None):
+        length = self.read_length()
+        if encoding == EncodingTypes.COMPRESSED:
+            data = self._buffer.read(length)
+            return zlib.decompress(data).decode()
+        return self._buffer.read(length).decode("utf-8")
+
+    def read_key_value(self):
+        handler, _ = self.read_object_id()
+        if handler is None:
+            return None, None
         key = self.read_value()
         value = handler.deserialise(self)
         return key, value

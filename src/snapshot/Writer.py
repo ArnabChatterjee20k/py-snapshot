@@ -1,7 +1,12 @@
 from typing import BinaryIO
 import struct
 import zlib
-from .TypeHandler import EncodingTypes, VariableLengthEncodingMarkers, ALL_SET_MARKER
+from .TypeHandler import (
+    TypeHandler,
+    EncodingTypes,
+    VariableLengthEncodingMarkers,
+    ALL_SET_MARKER,
+)
 from .TypeRegistry import TypeNotFoundException
 
 
@@ -35,20 +40,19 @@ class Writer:
         self._buffer.write(bytes([3 << 6 | encoding.value]))
 
     def write_key_value(self, key, value) -> int:
-        written = 0
-        # object type
+        handler, written = self.write_object_id(value)
+        # key length + data
+        written += self.write_value(key)
+        written += handler.serialise(self, value)
+        return written
+
+    # HACK: a very anti pattern to return hander + int from a writer
+    def write_object_id(self, value) -> tuple[TypeHandler, int]:
         handler = self._registry.get_handler_by_type(type(value))
         if not handler:
             raise TypeNotFoundException(f"Type handler not found for {type(value)}")
         object_type = handler.type_identifier
-        written += self.buffer.write(bytes([object_type]))
-
-        # key length
-        written += self.write_value(key)
-
-        # key data
-        written += handler.serialise(self, value)
-        return written
+        return handler, self.buffer.write(bytes([object_type]))
 
     def write_value(self, value) -> int:
         "Write the value to the buffer in compressed string format"

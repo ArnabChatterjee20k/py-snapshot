@@ -14,7 +14,9 @@ class ListHandler(TypeHandler[list]):
 
         written = 0
         for item in value:
-            written += writer.write_value(item)
+            object_type_handler, byte_written = writer.write_object_id(item)
+            written += byte_written
+            written += object_type_handler.serialise(writer, item)
         return written
 
     def deserialise(self, reader: Reader) -> list:
@@ -22,7 +24,8 @@ class ListHandler(TypeHandler[list]):
         while True:
             current_pos = reader.buffer.tell()
             try:
-                value = reader.read_value()
+                object_type_handler, _ = reader.read_object_id()
+                value = object_type_handler.deserialise(reader)
                 if not value:
                     break
                 results.append(value)
