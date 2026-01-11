@@ -89,7 +89,7 @@ class Writer:
 
         # writing explicitly as struct returns bytes so bytes
         self._buffer.write(
-            bytes([VariableLengthEncodingMarkers.THIRTY_TWO_BIT_ENCODING])
+            bytes([VariableLengthEncodingMarkers.THIRTY_TWO_BIT_ENCODING.value])
         )
         self._buffer.write(struct.pack("<I", length))
         return 5

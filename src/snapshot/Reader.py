@@ -37,15 +37,18 @@ class Reader:
         return None
 
     def read_object_id(self) -> tuple[TypeHandler, int]:
-        # object type
+        current_pos = self._buffer.tell()
+        encoding = self.read_encoding()
+
+        if encoding == EncodingTypes.EOF:
+            return None, 1
+
+        self._buffer.seek(current_pos)
         current = self._buffer.read(1)
         if not current:
-            return None, None  # EOF
-        object_type_id = current[0]
+            return None, None
 
-        # EOF marker
-        if object_type_id == EncodingTypes.EOF.value:
-            return None, 1
+        object_type_id = current[0]
 
         handler = self._registry.get_handler_by_id(object_type_id)
         if not handler:
@@ -90,4 +93,4 @@ class Reader:
             second_byte = self.buffer.read(1)[0]
             return (first_byte << 8) | second_byte
 
-        return struct.unpack("<I", self.buffer.read(4)[0])
+        return struct.unpack("<I", self.buffer.read(4))[0]
