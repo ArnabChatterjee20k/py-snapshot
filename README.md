@@ -424,7 +424,7 @@ Numbers are also written as string, so the Encoder is used to write them to byte
 
 ```bash
 # Install dependencies
-uv pip install -r pyprojects.toml
+uv pip install -r pyproject.toml
 
 # Run tests
 pytest tests/ -v
