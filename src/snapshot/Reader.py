@@ -11,22 +11,36 @@ import zlib
 
 
 class Reader:
-    def __init__(self, destination: dict = None, buffer: BinaryIO = None):
+    def __init__(self, buffer: BinaryIO = None):
         from . import registry
 
         self._registry = registry
         self._buffer: BinaryIO = buffer
-        self._destination: dict = destination
 
     def set_buffer(self, buffer: BinaryIO):
         self._buffer = buffer
 
-    def set_destination(self, destination: dict):
-        self._destination = destination
-
     @property
     def buffer(self):
         return self._buffer
+
+    def read(self) -> dict:
+        if not self._buffer:
+            return {}
+        length = self.read_length()
+        result = {}
+
+        for _ in range(length):
+            key, value = self.read_key_value()
+            if key is None or value is None:
+                break
+            result[key] = value
+
+        encoding = self.read_encoding()
+        if encoding == EncodingTypes.EOF:
+            pass
+
+        return result
 
     def read_encoding(self):
         first_byte = self._buffer.read(1)[0]

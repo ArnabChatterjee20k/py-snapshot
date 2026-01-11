@@ -17,24 +17,11 @@ class TestReader:
         assert reader.buffer == buffer
         assert reader._buffer == buffer
 
-    def test_init_with_destination_and_buffer(self, buffer):
-        """Test Reader initialization with destination and buffer."""
-        destination = {}
-        reader = Reader(destination=destination, buffer=buffer)
-        assert reader._destination == destination
-        assert reader.buffer == buffer
-
     def test_set_buffer(self, reader):
         """Test setting buffer after initialization."""
         new_buffer = BytesIO()
         reader.set_buffer(new_buffer)
         assert reader.buffer == new_buffer
-
-    def test_set_destination(self, reader):
-        """Test setting destination after initialization."""
-        destination = {"test": "data"}
-        reader.set_destination(destination)
-        assert reader._destination == destination
 
     def test_read_encoding_with_encoding(self, buffer):
         """Test reading an encoding marker."""
@@ -213,6 +200,35 @@ class TestReader:
         assert key is None
         assert value is None
 
+    def test_read_full_dict(self, writer_reader_pair):
+        """Test reading a complete dictionary using read()."""
+        writer, reader, buffer = writer_reader_pair
+        original_source = {
+            "key1": "value1",
+            "key2": 42,
+            "key3": {"nested": "data"},
+            "key4": [1, 2, 3],
+        }
+
+        writer.set_source(original_source)
+        writer.write()
+        buffer.seek(0)
+
+        read_dict = reader.read()
+        assert read_dict == original_source
+
+    def test_read_empty_dict(self, writer_reader_pair):
+        """Test reading an empty dictionary."""
+        writer, reader, buffer = writer_reader_pair
+        original_source = {}
+
+        writer.set_source(original_source)
+        writer.write()
+        buffer.seek(0)
+
+        read_dict = reader.read()
+        assert read_dict == original_source
+
     def test_round_trip_string(self, writer_reader_pair):
         """Test round-trip serialization/deserialization of string."""
         writer, reader, buffer = writer_reader_pair
@@ -251,3 +267,22 @@ class TestReader:
         read_key, read_value = reader.read_key_value()
         assert read_key == original_key
         assert read_value == original_value
+
+    def test_round_trip_full_dict(self, writer_reader_pair):
+        """Test round-trip serialization/deserialization using write() and read()."""
+        writer, reader, buffer = writer_reader_pair
+        original_source = {
+            "str": "value",
+            "int": 42,
+            "nested": {"key": "value"},
+            "list": [1, 2, 3],
+            "empty_dict": {},
+            "empty_list": [],
+        }
+
+        writer.set_source(original_source)
+        writer.write()
+        buffer.seek(0)
+
+        read_dict = reader.read()
+        assert read_dict == original_source
