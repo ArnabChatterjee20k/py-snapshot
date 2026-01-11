@@ -14,5 +14,5 @@ class FloatHandler(TypeHandler[float]):
 
         return writer.write_value(value)
 
-    def deserialise(self, reader: Reader) -> dict:
-        return reader.read_value()
+    def deserialise(self, reader: Reader) -> float:
+        return float(reader.read_value())

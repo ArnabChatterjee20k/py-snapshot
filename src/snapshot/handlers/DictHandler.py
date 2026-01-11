@@ -12,7 +12,8 @@ class DictHandler(TypeHandler[dict]):
         if not self.can_handle(value):
             raise TypeError("Can handle value")
 
-        written = 0
+        # writing the length of the dict so that over read/write doesnt happens
+        written = writer.write_length(len(value))
         for key, value in value.items():
             written += writer.write_key_value(key, value)
 
@@ -20,7 +21,7 @@ class DictHandler(TypeHandler[dict]):
 
     def deserialise(self, reader: Reader) -> dict:
         result = {}
-        while True:
+        for _ in range(reader.read_length()):
             current_pos = reader.buffer.tell()
             try:
                 key, value = reader.read_key_value()

@@ -12,7 +12,7 @@ class ListHandler(TypeHandler[list]):
         if not self.can_handle(value):
             raise TypeError("Can't handle value")
 
-        written = 0
+        written = writer.write_length(len(value))
         for item in value:
             object_type_handler, byte_written = writer.write_object_id(item)
             written += byte_written
@@ -21,7 +21,8 @@ class ListHandler(TypeHandler[list]):
 
     def deserialise(self, reader: Reader) -> list:
         results = []
-        while True:
+        length = reader.read_length()
+        for _ in range(length):
             current_pos = reader.buffer.tell()
             try:
                 object_type_handler, _ = reader.read_object_id()

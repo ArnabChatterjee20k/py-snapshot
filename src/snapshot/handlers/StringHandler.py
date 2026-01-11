@@ -14,5 +14,5 @@ class StringHandler(TypeHandler[str]):
 
         return writer.write_value(value)
 
-    def deserialise(self, reader: Reader) -> dict:
+    def deserialise(self, reader: Reader) -> str:
         return reader.read_value()
