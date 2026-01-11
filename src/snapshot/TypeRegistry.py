@@ -1,4 +1,5 @@
 from .TypeHandler import TypeHandler
+from typing import List, Union
 
 
 class TypeRegistry:
@@ -7,21 +8,24 @@ class TypeRegistry:
         self._by_ids: dict[int, TypeHandler] = {}
         self._sequence_types: set[int] = set()
 
-    def register(self, handler: TypeHandler):
-        _type = handler.python_type
-        _id = handler.type_identifier
+    def register(self, handlers: Union[TypeHandler, List[TypeHandler]]):
+        if not isinstance(handlers, list):
+            handlers = [handlers]
+        for handler in handlers:
+            _type = handler.python_type
+            _id = handler.type_identifier
 
-        if not handler.override_previous_entry:
-            if _type in self._by_types:
-                raise ValueError(f"Handler already registered for type {_type}")
+            if not handler.override_previous_entry:
+                if _type in self._by_types:
+                    raise ValueError(f"Handler already registered for type {_type}")
 
-            if _id in self._by_ids:
-                raise ValueError(f"Handler already registered for identifier {_id}")
+                if _id in self._by_ids:
+                    raise ValueError(f"Handler already registered for identifier {_id}")
 
-        self._by_types[_type] = handler
-        self._by_ids[_id] = handler
-        if handler.is_sequence_type:
-            self._sequence_types.add(_id)
+            self._by_types[_type] = handler
+            self._by_ids[_id] = handler
+            if handler.is_sequence_type:
+                self._sequence_types.add(_id)
 
     def get_handler_by_id(self, id):
         return self._by_ids.get(id)

@@ -61,12 +61,10 @@ class Writer:
 
         if compressed_length < original_length:
             self.write_encoding(EncodingTypes.COMPRESSED)
-            return sum(
-                self.write_length(compressed_length), self._buffer.write(compressed)
-            )
+            return self.write_length(compressed_length) + self._buffer.write(compressed)
 
         # no compression marker
-        return sum([self.write_length(original_length), self._buffer.write(value)])
+        return self.write_length(original_length) + self._buffer.write(value)
 
     def write_length(self, length: int) -> int:
         "Returns number of bytes written"
@@ -74,7 +72,7 @@ class Writer:
             self._buffer.write(bytes([length]))
             return 1
 
-        if length <= VariableLengthEncodingMarkers.FORTEEN_BIT_ENCODING:
+        if length <= VariableLengthEncodingMarkers.FORTEEN_BIT_ENCODING.value:
             # we need to pack the whole byte into two bytes
             # basically inside 14 bits as first bit will be for marker
             # overflow and padding it with marker
@@ -85,12 +83,9 @@ class Writer:
             self._buffer.write(bytes([first_byte, second_byte]))
             return 2
 
+        # writing explicitly as struct returns bytes so bytes
         self._buffer.write(
-            bytes(
-                [
-                    VariableLengthEncodingMarkers.THIRTY_TWO_BIT_ENCODING,
-                    struct.pack("<I", length),
-                ]
-            )
+            bytes([VariableLengthEncodingMarkers.THIRTY_TWO_BIT_ENCODING])
         )
+        self._buffer.write(struct.pack("<I", length))
         return 5

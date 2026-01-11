@@ -20,5 +20,15 @@ class DictHandler(TypeHandler[dict]):
 
     def deserialise(self, reader: Reader) -> dict:
         result = {}
-        key = reader.read_value(reader.read_encoding())
-        if key
+        while True:
+            current_pos = reader.buffer.tell()
+            try:
+                key, value = reader.read_key_value()
+                if key == None or value == None:
+                    break
+                result[key] = value
+            except Exception:
+                reader.buffer.seek(current_pos)
+                break
+
+        return result

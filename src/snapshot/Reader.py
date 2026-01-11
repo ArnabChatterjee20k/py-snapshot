@@ -1,11 +1,15 @@
 from typing import BinaryIO
 import struct
 from .TypeHandler import EncodingTypes, VariableLengthEncodingMarkers, ALL_SET_MARKER
+from .TypeRegistry import TypeNotFoundException
 import zlib
 
 
 class Reader:
     def __init__(self, destination: dict = None, buffer: BinaryIO = None):
+        from . import registry
+
+        self._registry = registry
         self._buffer: BinaryIO = buffer
         self._destination: dict = destination
 
@@ -34,8 +38,29 @@ class Reader:
             return zlib.decompress(data).decode()
         return self._buffer.read(length).decode("utf-8")
 
+    def read_key_value(self):
+        # object type
+        current = self._buffer.read(1)
+        if not current:
+            return None, None  # EOF
+        object_type_id = current[0]
+
+        # EOF marker
+        if object_type_id == EncodingTypes.EOF.value:
+            return None, None
+
+        handler = self._registry.get_handler_by_id(object_type_id)
+        if not handler:
+            raise TypeNotFoundException(
+                f"Handler not found for type ID {object_type_id}"
+            )
+
+        key = self.read_value()
+        value = handler.deserialise(self)
+        return key, value
+
     def read_length(self):
-        length = self._buffer.read(1)[0]
+        length = self._buffer.read(1)
         marker_with_first_byte = length[0]
 
         if (
