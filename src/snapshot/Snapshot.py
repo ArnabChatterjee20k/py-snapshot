@@ -1,5 +1,6 @@
 from pathlib import Path
 from datetime import datetime
+from typing import BinaryIO
 import os
 from .Reader import Reader
 from .Writer import Writer
@@ -92,6 +93,21 @@ class SnapshotManager:
         if not path.exists():
             raise Exception(f"{snapshot_name} doesn't exists")
         path.unlink()
+
+    def write_to_buffer(self, source: dict, buffer: BinaryIO) -> int:
+        writer = Writer(source, buffer)
+        writer.write()
+        buffer.flush()
+        if hasattr(buffer, "tell"):
+            return buffer.tell()
+        return 0
+
+    def read_from_buffer(self, buffer: BinaryIO) -> dict:
+        if hasattr(buffer, "seek"):
+            buffer.seek(0)
+        reader = Reader(buffer)
+        data = reader.read()
+        return data if data else {}
 
     def _init(self):
         path = self._path

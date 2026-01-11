@@ -3,6 +3,7 @@
 import pytest
 import tempfile
 import shutil
+from io import BytesIO
 from pathlib import Path
 from datetime import datetime
 from src.snapshot.Snapshot import SnapshotManager
@@ -324,3 +325,132 @@ class TestSnapshotManager:
             assert isinstance(parsed, datetime)
         except ValueError:
             pytest.fail(f"Filename {filename} doesn't match datetime format")
+
+    def test_write_to_buffer(self, snapshot_manager):
+        """Test writing snapshot to a buffer."""
+        source = {"key1": "value1", "key2": 42, "nested": {"key": "value"}}
+        buffer = BytesIO()
+
+        bytes_written = snapshot_manager.write_to_buffer(source, buffer)
+        assert bytes_written > 0
+        assert buffer.tell() > 0
+
+    def test_read_from_buffer(self, snapshot_manager):
+        """Test reading snapshot from a buffer."""
+        source = {"key1": "value1", "key2": 42, "nested": {"key": "value"}}
+        buffer = BytesIO()
+
+        snapshot_manager.write_to_buffer(source, buffer)
+        buffer.seek(0)
+
+        loaded = snapshot_manager.read_from_buffer(buffer)
+        assert loaded == source
+
+    def test_write_read_buffer_round_trip(self, snapshot_manager):
+        """Test round-trip: write to buffer then read from buffer."""
+        original = {
+            "string": "test",
+            "integer": 123,
+            "nested": {"level1": {"level2": "deep"}},
+            "list": [1, "mixed", {"key": "value"}],
+            "empty_dict": {},
+            "empty_list": [],
+        }
+
+        buffer = BytesIO()
+        snapshot_manager.write_to_buffer(original, buffer)
+        buffer.seek(0)
+
+        loaded = snapshot_manager.read_from_buffer(buffer)
+        assert loaded == original
+        assert loaded["nested"]["level1"]["level2"] == "deep"
+        assert loaded["list"] == [1, "mixed", {"key": "value"}]
+
+    def test_write_to_buffer_empty_dict(self, snapshot_manager):
+        """Test writing empty dictionary to buffer."""
+        source = {}
+        buffer = BytesIO()
+
+        bytes_written = snapshot_manager.write_to_buffer(source, buffer)
+        assert bytes_written > 0
+
+        buffer.seek(0)
+        loaded = snapshot_manager.read_from_buffer(buffer)
+        assert loaded == source
+
+    def test_read_from_buffer_empty(self, snapshot_manager):
+        """Test reading from empty buffer."""
+        buffer = BytesIO()
+        loaded = snapshot_manager.read_from_buffer(buffer)
+        assert loaded == {}
+
+    def test_write_to_buffer_complex_data(self, snapshot_manager):
+        """Test writing complex nested data to buffer."""
+        complex_data = {
+            "metadata": {"version": 1, "timestamp": "2024-01-01"},
+            "items": [
+                {"id": 1, "name": "item1"},
+                {"id": 2, "name": "item2"},
+            ],
+            "settings": {
+                "enabled": "true",
+                "count": 42,
+                "tags": ["tag1", "tag2"],
+            },
+        }
+
+        buffer = BytesIO()
+        snapshot_manager.write_to_buffer(complex_data, buffer)
+        buffer.seek(0)
+
+        loaded = snapshot_manager.read_from_buffer(buffer)
+        assert loaded == complex_data
+        assert len(loaded["items"]) == 2
+        assert loaded["items"][0]["id"] == 1
+
+    def test_multiple_buffer_operations(self, snapshot_manager):
+        """Test multiple write/read operations on same buffer."""
+        buffer = BytesIO()
+
+        # Write first snapshot
+        source1 = {"iteration": 1, "data": "first"}
+        snapshot_manager.write_to_buffer(source1, buffer)
+        buffer.seek(0)
+        loaded1 = snapshot_manager.read_from_buffer(buffer)
+        assert loaded1 == source1
+
+        # Write second snapshot (overwrites buffer)
+        buffer.seek(0)
+        source2 = {"iteration": 2, "data": "second"}
+        snapshot_manager.write_to_buffer(source2, buffer)
+        buffer.seek(0)
+        loaded2 = snapshot_manager.read_from_buffer(buffer)
+        assert loaded2 == source2
+
+    def test_buffer_vs_file_consistency(self, snapshot_manager):
+        """Test that buffer and file operations produce same results."""
+        source = {
+            "test": "data",
+            "number": 42,
+            "nested": {"key": "value"},
+            "list": [1, 2, 3],
+        }
+
+        # Write to buffer
+        buffer = BytesIO()
+        snapshot_manager.write_to_buffer(source, buffer)
+
+        # Write to file
+        snapshot_manager.dump(source)
+
+        # Read from buffer
+        buffer.seek(0)
+        buffer_data = snapshot_manager.read_from_buffer(buffer)
+
+        # Read from file
+        file_data = snapshot_manager.load()
+
+        # Both should match original
+        assert buffer_data == source
+        assert file_data == source
+        assert buffer_data == file_data
